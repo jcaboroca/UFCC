@@ -220,9 +220,6 @@ async function main() {
   window.addEventListener("resize", scheduleRender);
   window.addEventListener("scroll", updateMiniChamp, { passive: true });
   miniEl.addEventListener("click", scrollToTopSmooth);
-  // Some webviews swallow click on transformed/animated buttons; pointerup is
-  // a reliable backup that fires before any default click handling.
-  miniEl.addEventListener("pointerup", scrollToTopSmooth);
   updateMiniChamp();
   renderVisible();
 
@@ -288,29 +285,28 @@ function updateMiniChamp() {
 }
 
 let scrollAnim = 0;
+function currentScrollY() {
+  const se = document.scrollingElement || document.documentElement;
+  return window.pageYOffset || se.scrollTop || 0;
+}
+function setScrollY(y) {
+  // window.scrollTo always targets the actual scrolling element across
+  // browsers; writing scrollTop directly on documentElement/body is
+  // unreliable on mobile Chromium where the scrolling element may differ.
+  window.scrollTo(0, y);
+}
 function scrollToTopSmooth(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
-  const start =
-    window.pageYOffset ||
-    document.documentElement.scrollTop ||
-    document.body.scrollTop ||
-    0;
+  const start = currentScrollY();
   if (start <= 0) return;
-  // Cancel any previous animation so we don't get two rAF loops fighting.
   if (scrollAnim) cancelAnimationFrame(scrollAnim);
-  // We intentionally do NOT call window.scrollTo({behavior:'smooth'}) here —
-  // in Safari desktop the native smooth scroll fights with our rAF writes
-  // and the page ends up stuck. A single rAF loop works the same everywhere.
   const duration = 450;
   const t0 = performance.now();
   const ease = (t) => 1 - Math.pow(1 - t, 3);
   function step(now) {
     const k = Math.min(1, (now - t0) / duration);
     const y = Math.round(start * (1 - ease(k)));
-    // Safari may scroll either documentElement or body depending on quirks
-    // mode / styles, so write to both to be safe.
-    document.documentElement.scrollTop = y;
-    document.body.scrollTop = y;
+    setScrollY(y);
     if (k < 1) {
       scrollAnim = requestAnimationFrame(step);
     } else {
