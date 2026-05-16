@@ -9,6 +9,9 @@
 </head>
 <body>
   <header class="topbar">
+    <button type="button" class="topbar-toggle" id="sidebar-toggle" aria-label="Toggle sidebar">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+    </button>
     <div class="brand">
       <span class="dot"></span>
       <h1>UFCC</h1>
@@ -23,34 +26,120 @@
     </button>
   </header>
 
-  <section class="hero" id="hero" aria-label="Current champion">
-    <div class="hero-inner">
-      <div class="hero-crest" id="hero-crest"></div>
-      <div class="hero-text">
-        <div class="hero-eyebrow">Current UFCC champion</div>
-        <h2 class="hero-name" id="hero-name">—</h2>
-        <div class="hero-counter">
-          <span class="hero-counter-n" id="hero-days">0</span>
-          <span class="hero-counter-l">days as champion</span>
-        </div>
-        <div class="hero-since" id="hero-since"></div>
-      </div>
+  <div class="app-shell" id="app-shell">
+    <nav class="activity-bar" id="activity-bar" aria-label="Sections">
+      <button class="ab-btn active" data-view="feed" aria-label="Feed" title="Feed">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>
+        <span class="ab-label">Feed</span>
+      </button>
+      <button class="ab-btn" data-view="rankings" aria-label="Rankings" title="Rankings">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0V4z"/><path d="M17 4h3v3a3 3 0 0 1-3 3M7 4H4v3a3 3 0 0 0 3 3"/></svg>
+        <span class="ab-label">Rankings</span>
+      </button>
+      <button class="ab-btn" data-view="reigns" aria-label="Longest reigns" title="Longest reigns">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+        <span class="ab-label">Reigns</span>
+      </button>
+      <button class="ab-btn" data-view="countries" aria-label="Countries" title="Countries">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a13 13 0 0 1 0 18M12 3a13 13 0 0 0 0 18"/></svg>
+        <span class="ab-label">Countries</span>
+      </button>
+      <button class="ab-btn" data-view="map" aria-label="Map" title="Map">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+        <span class="ab-label">Map</span>
+      </button>
+      <button class="ab-btn" data-view="stats" aria-label="Stats" title="Stats">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="20" x2="4" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="20" y1="20" x2="20" y2="14"/></svg>
+        <span class="ab-label">Stats</span>
+      </button>
+      <button class="ab-btn" data-view="search" aria-label="Search" title="Search">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <span class="ab-label">Search</span>
+      </button>
+    </nav>
+
+    <div class="content" id="content">
+      <section class="view active" data-view="feed" id="view-feed">
+        <section class="hero" id="hero" aria-label="Current champion">
+          <div class="hero-inner">
+            <div class="hero-crest" id="hero-crest"></div>
+            <div class="hero-text">
+              <div class="hero-eyebrow">Current UFCC champion</div>
+              <h2 class="hero-name" id="hero-name">—</h2>
+              <div class="hero-counter">
+                <span class="hero-counter-n" id="hero-days">0</span>
+                <span class="hero-counter-l">days as champion</span>
+              </div>
+              <div class="hero-since" id="hero-since"></div>
+            </div>
+          </div>
+        </section>
+
+        <main class="layout">
+          <section class="feed" id="feed" aria-label="Match lineage feed">
+            <div class="feed-spacer" id="feed-spacer"></div>
+            <div class="feed-content" id="feed-content"></div>
+          </section>
+
+          <aside class="timeline" id="timeline" aria-label="Year timeline">
+            <div class="timeline-track" id="timeline-track"></div>
+            <div class="timeline-thumb" id="timeline-thumb">
+              <span id="timeline-year">—</span>
+            </div>
+          </aside>
+        </main>
+      </section>
+
+      <section class="view section-view" data-view="rankings" id="view-rankings" hidden>
+        <header class="view-header">
+          <h2>All-time rankings</h2>
+          <p>Total days holding the championship across every reign.</p>
+        </header>
+        <div class="view-body" id="rankings-body"></div>
+      </section>
+
+      <section class="view section-view" data-view="reigns" id="view-reigns" hidden>
+        <header class="view-header">
+          <h2>Longest individual reigns</h2>
+          <p>Top 100 uninterrupted reigns by duration.</p>
+        </header>
+        <div class="view-body" id="reigns-body"></div>
+      </section>
+
+      <section class="view section-view" data-view="countries" id="view-countries" hidden>
+        <header class="view-header">
+          <h2>By country</h2>
+          <p>How long the championship has stayed in each country.</p>
+        </header>
+        <div class="view-body" id="countries-body"></div>
+      </section>
+
+      <section class="view section-view view-map" data-view="map" id="view-map" hidden>
+        <header class="view-header">
+          <h2>Map of champions</h2>
+          <p>Each circle is a club that has held the championship. Size reflects total days.</p>
+        </header>
+        <div class="map-container" id="map-container"></div>
+      </section>
+
+      <section class="view section-view" data-view="stats" id="view-stats" hidden>
+        <header class="view-header">
+          <h2>Global stats</h2>
+          <p>Numbers from <span id="stats-first-date">—</span> to <span id="stats-last-date">—</span>.</p>
+        </header>
+        <div class="view-body" id="stats-body"></div>
+      </section>
+
+      <section class="view section-view" data-view="search" id="view-search" hidden>
+        <header class="view-header">
+          <h2>Search</h2>
+          <input type="search" id="search-input" placeholder="Club, year, match #, venue..." autocomplete="off" />
+          <p class="search-meta" id="search-meta">Search across every match in history.</p>
+        </header>
+        <div class="view-body" id="search-body"></div>
+      </section>
     </div>
-  </section>
-
-  <main class="layout">
-    <section class="feed" id="feed" aria-label="Match lineage feed">
-      <div class="feed-spacer" id="feed-spacer"></div>
-      <div class="feed-content" id="feed-content"></div>
-    </section>
-
-    <aside class="timeline" id="timeline" aria-label="Year timeline">
-      <div class="timeline-track" id="timeline-track"></div>
-      <div class="timeline-thumb" id="timeline-thumb">
-        <span id="timeline-year">—</span>
-      </div>
-    </aside>
-  </main>
+  </div>
 
   <div class="loading" id="loading">Loading lineage…</div>
 

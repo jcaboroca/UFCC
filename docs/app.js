@@ -320,3 +320,352 @@ main().catch((e) => {
   console.error(e);
   loadingEl.textContent = "Failed to load data.";
 });
+
+/* ============================================================
+   VIEW ROUTING + SECTIONS
+   ============================================================ */
+
+const viewLoaders = {
+  feed:      () => {},  // already initialised by main()
+  rankings:  loadRankingsView,
+  reigns:    loadReignsView,
+  countries: loadCountriesView,
+  map:       loadMapView,
+  stats:     loadStatsView,
+  search:    loadSearchView,
+};
+const viewLoaded = new Set(["feed"]);
+
+function switchView(view) {
+  document.querySelectorAll(".view").forEach(v => {
+    const on = v.dataset.view === view;
+    v.classList.toggle("active", on);
+    if (on) v.removeAttribute("hidden");
+    else v.setAttribute("hidden", "");
+  });
+  document.querySelectorAll(".ab-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.view === view);
+  });
+  if (!viewLoaded.has(view)) {
+    viewLoaded.add(view);
+    Promise.resolve().then(() => viewLoaders[view]?.());
+  }
+  // When leaving feed, the topbar mini-champ shouldn't show; bring back when returning.
+  if (view !== "feed") {
+    miniEl.classList.remove("visible");
+    miniEl.setAttribute("aria-hidden", "true");
+  } else {
+    updateMiniChamp();
+  }
+  // Scroll to top on view change for predictability.
+  window.scrollTo(0, 0);
+  // Persist last view.
+  try { localStorage.setItem("ufcc.view", view); } catch (_) {}
+}
+
+function initActivityBar() {
+  document.querySelectorAll(".ab-btn").forEach(btn => {
+    btn.addEventListener("click", () => switchView(btn.dataset.view));
+  });
+  const toggle = document.getElementById("sidebar-toggle");
+  toggle.addEventListener("click", () => {
+    document.body.classList.toggle("sidebar-collapsed");
+    try {
+      localStorage.setItem(
+        "ufcc.sidebar",
+        document.body.classList.contains("sidebar-collapsed") ? "collapsed" : "open"
+      );
+    } catch (_) {}
+  });
+  try {
+    if (localStorage.getItem("ufcc.sidebar") === "collapsed") {
+      document.body.classList.add("sidebar-collapsed");
+    }
+    const last = localStorage.getItem("ufcc.view");
+    if (last && viewLoaders[last] && last !== "feed") switchView(last);
+  } catch (_) {}
+}
+
+/* ---------- Shared helpers ---------- */
+
+function crestCellHTML(name, crestFile, size = 36) {
+  if (crestFile) {
+    return `<div class="rank-crest"><img loading="lazy" src="crests/${crestFile}" alt=""></div>`;
+  }
+  return `<div class="rank-crest">${initials(name)}</div>`;
+}
+
+function fmtNum(n) { return Number(n).toLocaleString(); }
+
+function fmtShortDate(iso) {
+  if (!iso) return "—";
+  const [y, m, d] = iso.split("-");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return `${Number(d)} ${months[Number(m)-1]} ${y}`;
+}
+
+async function loadJSON(name) {
+  const r = await fetch(`data/${name}`);
+  if (!r.ok) throw new Error(`Fetch ${name} ${r.status}`);
+  return r.json();
+}
+
+/* ---------- Rankings ---------- */
+
+async function loadRankingsView() {
+  const body = document.getElementById("rankings-body");
+  body.innerHTML = `<p style="color: var(--text-dim)">Loading rankings…</p>`;
+  let data;
+  try { data = await loadJSON("rankings.json"); }
+  catch (e) { body.innerHTML = `<p>Failed to load.</p>`; return; }
+
+  const frag = document.createDocumentFragment();
+  data.slice(0, 200).forEach((row, i) => {
+    const el = document.createElement("article");
+    el.className = "rank-row" + (i < 3 ? " gold" : "");
+    el.innerHTML = `
+      <div class="rank-pos">${i + 1}</div>
+      ${crestCellHTML(row.name, row.crest)}
+      <div class="rank-info">
+        <div class="rank-name">${escapeHtml(row.name)}</div>
+        <div class="rank-sub">${fmtNum(row.matches)} matches · ${row.reigns} reign${row.reigns === 1 ? "" : "s"}</div>
+      </div>
+      <div class="rank-metric">
+        <span class="big">${fmtNum(row.days)}</span>
+        <span class="lbl">days</span>
+      </div>
+    `;
+    frag.appendChild(el);
+  });
+  body.innerHTML = "";
+  body.appendChild(frag);
+}
+
+/* ---------- Longest reigns ---------- */
+
+async function loadReignsView() {
+  const body = document.getElementById("reigns-body");
+  body.innerHTML = `<p style="color: var(--text-dim)">Loading reigns…</p>`;
+  let data;
+  try { data = await loadJSON("longest_reigns.json"); }
+  catch (e) { body.innerHTML = `<p>Failed to load.</p>`; return; }
+
+  const frag = document.createDocumentFragment();
+  data.forEach((row, i) => {
+    const el = document.createElement("article");
+    el.className = "rank-row" + (i < 3 ? " gold" : "");
+    const range = `${fmtShortDate(row.started_on)} → ${row.is_current ? "today" : fmtShortDate(row.ended_on)}`;
+    el.innerHTML = `
+      <div class="rank-pos">${i + 1}</div>
+      ${crestCellHTML(row.club, row.crest)}
+      <div class="rank-info">
+        <div class="rank-name">${escapeHtml(row.club)}${row.is_current ? ' <span style="color:var(--gold);font-size:11px;">· current</span>' : ""}</div>
+        <div class="rank-sub">${range} · ${row.matches} matches</div>
+      </div>
+      <div class="rank-metric">
+        <span class="big">${fmtNum(row.days)}</span>
+        <span class="lbl">days</span>
+      </div>
+    `;
+    frag.appendChild(el);
+  });
+  body.innerHTML = "";
+  body.appendChild(frag);
+}
+
+/* ---------- Countries ---------- */
+
+async function loadCountriesView() {
+  const body = document.getElementById("countries-body");
+  body.innerHTML = `<p style="color: var(--text-dim)">Loading countries…</p>`;
+  let data;
+  try { data = await loadJSON("countries.json"); }
+  catch (e) { body.innerHTML = `<p>Failed to load.</p>`; return; }
+
+  const frag = document.createDocumentFragment();
+  data.forEach(row => {
+    const el = document.createElement("article");
+    el.className = "country-card";
+    const chips = row.top_clubs.map(c =>
+      `<span class="country-chip">
+        <span class="mini-c">${c.crest ? `<img src="crests/${c.crest}" alt="">` : initials(c.name)}</span>
+        ${escapeHtml(c.name)}
+        <span class="d">${fmtNum(c.days)}d</span>
+      </span>`
+    ).join("");
+    el.innerHTML = `
+      <div class="country-card-head">
+        <div>
+          <div class="name">${escapeHtml(row.country)}</div>
+          <div class="sub">${row.clubs_total} club${row.clubs_total === 1 ? "" : "s"} · ${fmtNum(row.matches)} matches</div>
+        </div>
+        <div class="days">${fmtNum(row.days)}d</div>
+      </div>
+      <div class="country-clubs">${chips}</div>
+    `;
+    frag.appendChild(el);
+  });
+  body.innerHTML = "";
+  body.appendChild(frag);
+}
+
+/* ---------- Stats ---------- */
+
+async function loadStatsView() {
+  const body = document.getElementById("stats-body");
+  body.innerHTML = `<p style="color: var(--text-dim)">Loading stats…</p>`;
+  let s;
+  try { s = await loadJSON("stats.json"); }
+  catch (e) { body.innerHTML = `<p>Failed to load.</p>`; return; }
+
+  document.getElementById("stats-first-date").textContent = fmtShortDate(s.first_date);
+  document.getElementById("stats-last-date").textContent = fmtShortDate(s.last_date);
+
+  const cards = [
+    { lbl: "Total matches",   val: fmtNum(s.total_matches), extra: "Every game in the lineage" },
+    { lbl: "Clubs involved",  val: fmtNum(s.total_clubs),   extra: "Distinct clubs in any match" },
+    { lbl: "Different champions", val: fmtNum(s.total_champions), extra: "Clubs that held the title" },
+    { lbl: "Reign changes",   val: fmtNum(s.total_reigns),  extra: "Times the belt swapped hands" },
+    { lbl: "Current champion", val: s.current_champion || "—", extra: "Holding it right now", gold: true },
+    { lbl: "Longest reign", val: `${fmtNum(s.longest_reign.days)}d`, extra: `${escapeHtml(s.longest_reign.club)} · ${s.longest_reign.matches} matches`, gold: true },
+    { lbl: "Shortest reign", val: `${s.shortest_reign.days}d`, extra: `${escapeHtml(s.shortest_reign.club)} · ${fmtShortDate(s.shortest_reign.started_on)}` },
+    { lbl: "Year with most changes", val: s.most_changes_year ? s.most_changes_year.year : "—", extra: s.most_changes_year ? `${s.most_changes_year.changes} reign changes` : "" },
+  ];
+  const html = `<div class="stats-grid">${
+    cards.map(c => `
+      <div class="stat-card${c.gold ? " gold" : ""}">
+        <div class="lbl">${c.lbl}</div>
+        <div class="val">${c.val}</div>
+        ${c.extra ? `<div class="extra">${c.extra}</div>` : ""}
+      </div>
+    `).join("")
+  }</div>`;
+  body.innerHTML = html;
+}
+
+/* ---------- Search ---------- */
+
+let searchIndex = null;
+function buildSearchIndex() {
+  if (searchIndex) return;
+  // Lowercase concatenation for quick filter.
+  searchIndex = matches.map(m => {
+    const [no, date, home, score, away, , comp, venue, champ] = m;
+    return `${no} ${date} ${home} ${away} ${comp} ${venue} ${champ}`.toLowerCase();
+  });
+}
+function loadSearchView() {
+  buildSearchIndex();
+  const input = document.getElementById("search-input");
+  const body = document.getElementById("search-body");
+  const meta = document.getElementById("search-meta");
+  meta.textContent = `Search across ${fmtNum(matches.length)} matches.`;
+
+  let raf = 0;
+  function render() {
+    const q = input.value.trim().toLowerCase();
+    if (!q) { body.innerHTML = ""; meta.textContent = `Search across ${fmtNum(matches.length)} matches.`; return; }
+    const terms = q.split(/\s+/);
+    const limit = 200;
+    const out = [];
+    for (let i = 0; i < searchIndex.length && out.length < limit; i++) {
+      const hay = searchIndex[i];
+      let ok = true;
+      for (const t of terms) { if (!hay.includes(t)) { ok = false; break; } }
+      if (ok) out.push(i);
+    }
+    meta.textContent = `${out.length === limit ? out.length + "+" : out.length} result${out.length === 1 ? "" : "s"}`;
+    body.innerHTML = out.map(i => {
+      const m = matches[i];
+      const [no, date, home, score, away, result, comp, venue, champ] = m;
+      const [d, my] = fmtDate(date);
+      return `
+        <div class="search-result" data-idx="${i}">
+          <div class="date"><strong>${d}</strong>${my}<br>#${no}</div>
+          <div class="desc">
+            ${escapeHtml(home)} vs ${escapeHtml(away)}
+            <div class="meta">${escapeHtml(comp || "")}${venue ? " · " + escapeHtml(venue) : ""} · → ${escapeHtml(champ)}</div>
+          </div>
+          <div class="score">${escapeHtml(score)}</div>
+        </div>
+      `;
+    }).join("");
+  }
+  function schedule() { if (raf) return; raf = requestAnimationFrame(() => { raf = 0; render(); }); }
+  input.addEventListener("input", schedule);
+  body.addEventListener("click", (e) => {
+    const card = e.target.closest(".search-result");
+    if (!card) return;
+    const idx = Number(card.dataset.idx);
+    switchView("feed");
+    requestAnimationFrame(() => scrollToIndex(idx, false));
+  });
+  input.focus();
+}
+
+/* ---------- Map (lazy-load Leaflet) ---------- */
+
+let mapInstance = null;
+async function loadMapView() {
+  await ensureLeaflet();
+  const container = document.getElementById("map-container");
+  if (mapInstance) { mapInstance.invalidateSize(); return; }
+  let geo;
+  try { geo = await loadJSON("champions_geo.json"); }
+  catch (e) { container.innerHTML = "<p style='padding:20px;color:var(--text-dim)'>Failed to load map data.</p>"; return; }
+
+  const map = L.map(container, { worldCopyJump: true, scrollWheelZoom: true });
+  mapInstance = map;
+  L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png", {
+    maxZoom: 12,
+    attribution: '&copy; OpenStreetMap, &copy; CARTO',
+    subdomains: "abcd",
+  }).addTo(map);
+
+  // Compute marker sizes by days (sqrt scale).
+  const maxDays = Math.max(...geo.map(g => g.days));
+  geo.forEach(c => {
+    const r = 4 + 22 * Math.sqrt(c.days / maxDays);
+    const marker = L.circleMarker([c.lat, c.lon], {
+      radius: r,
+      color: "#f6c050",
+      weight: 1,
+      fillColor: "#f6c050",
+      fillOpacity: 0.55,
+    }).addTo(map);
+    marker.bindTooltip(c.name, { direction: "top", offset: [0, -2] });
+    const crestHTML = c.crest
+      ? `<img src="crests/${c.crest}" alt="">`
+      : initials(c.name);
+    marker.bindPopup(`
+      <div class="map-popup">
+        <div class="crest">${crestHTML}</div>
+        <div>
+          <div class="name">${escapeHtml(c.name)}</div>
+          <div class="meta"><b>${fmtNum(c.days)}d</b> · ${fmtNum(c.matches)} matches · ${c.reigns} reign${c.reigns === 1 ? "" : "s"}</div>
+        </div>
+      </div>
+    `);
+  });
+
+  map.fitBounds(L.latLngBounds(geo.map(g => [g.lat, g.lon])).pad(0.1));
+  setTimeout(() => map.invalidateSize(), 50);
+}
+
+function ensureLeaflet() {
+  if (window.L) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+    document.head.appendChild(css);
+    const js = document.createElement("script");
+    js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+    js.onload = () => resolve();
+    js.onerror = () => reject(new Error("Leaflet failed to load"));
+    document.head.appendChild(js);
+  });
+}
+
+// Wire up the activity bar after main() has initialised the feed.
+initActivityBar();
