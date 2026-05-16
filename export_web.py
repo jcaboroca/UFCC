@@ -174,6 +174,39 @@ def days_between(a: str, b: str) -> int:
     return max(1, (db_ - da).days)
 
 
+# Periodos de suspensión de fútbol por las dos guerras mundiales.
+# Las ligas europeas estuvieron paradas (o reemplazadas por torneos
+# regionales no oficiales) entre estas fechas, así que los días no
+# cuentan como "defensa" del título.
+WARTIME_RANGES = [
+    (date(1914, 8, 1), date(1919, 8, 31)),   # WWI
+    (date(1939, 9, 1), date(1946, 8, 31)),   # WWII
+]
+
+
+def wartime_days(a: str, b: str) -> int:
+    """Suma de días dentro de los periodos de guerra entre a y b."""
+    if not a or not b:
+        return 0
+    da = date.fromisoformat(a)
+    db_ = date.fromisoformat(b)
+    if db_ <= da:
+        return 0
+    total = 0
+    for ws, we in WARTIME_RANGES:
+        lo = max(da, ws)
+        hi = min(db_, we)
+        if hi > lo:
+            total += (hi - lo).days
+    return total
+
+
+def adjusted_days(a: str, b: str) -> int:
+    """days_between menos overlap con periodos de guerra."""
+    raw = days_between(a, b)
+    return max(1, raw - wartime_days(a, b))
+
+
 def main() -> None:
     DATA.mkdir(parents=True, exist_ok=True)
     CRESTS_DST.mkdir(parents=True, exist_ok=True)
@@ -271,7 +304,7 @@ def main() -> None:
         per_club_reigns: dict[str, int] = {}
         for idx, (club, held, start, end) in enumerate(reigns_rows):
             ref_end = today_iso if idx == last_reign_idx else (end or start)
-            d = days_between(start, ref_end)
+            d = adjusted_days(start, ref_end)
             per_club_days[club] = per_club_days.get(club, 0) + d
             per_club_matches[club] = per_club_matches.get(club, 0) + held
             per_club_reigns[club] = per_club_reigns.get(club, 0) + 1
@@ -291,11 +324,14 @@ def main() -> None:
         single_reigns = []
         for idx, (club, held, start, end) in enumerate(reigns_rows):
             ref_end = today_iso if idx == last_reign_idx else (end or start)
+            wartime = wartime_days(start, ref_end)
             single_reigns.append({
                 "club": club,
                 "started_on": start,
                 "ended_on": ref_end,
-                "days": days_between(start, ref_end),
+                "days": adjusted_days(start, ref_end),
+                "days_raw": days_between(start, ref_end),
+                "wartime_days": wartime,
                 "matches": held,
                 "is_current": idx == last_reign_idx,
                 "crest": clubs.get(club),

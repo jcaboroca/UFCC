@@ -496,12 +496,15 @@ async function loadReignsView() {
       const el = document.createElement("article");
       el.className = "rank-row" + (isTop3 ? " gold" : "");
       const range = `${fmtShortDate(row.started_on)} → ${row.is_current ? "today" : fmtShortDate(row.ended_on)}`;
+      const wartimeNote = row.wartime_days
+        ? ` <span style="color:var(--text-dim);font-size:11px;">(${fmtNum(row.wartime_days)}d wartime excluded)</span>`
+        : "";
       el.innerHTML = `
         <div class="rank-pos">${rank}</div>
         ${crestCellHTML(row.club, row.crest)}
         <div class="rank-info">
           <div class="rank-name">${escapeHtml(row.club)}${row.is_current ? ' <span style="color:var(--gold);font-size:11px;">· current</span>' : ""}</div>
-          <div class="rank-sub">${range} · ${row.matches} matches</div>
+          <div class="rank-sub">${range} · ${row.matches} matches${wartimeNote}</div>
         </div>
         <div class="rank-metric">
           <span class="big">${fmtNum(row.days)}</span>
