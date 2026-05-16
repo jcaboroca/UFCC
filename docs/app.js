@@ -287,26 +287,37 @@ function updateMiniChamp() {
   miniEl.setAttribute("aria-hidden", past ? "false" : "true");
 }
 
+let scrollAnim = 0;
 function scrollToTopSmooth(e) {
   if (e) { e.preventDefault(); e.stopPropagation(); }
-  const start = window.scrollY || document.documentElement.scrollTop || 0;
+  const start =
+    window.pageYOffset ||
+    document.documentElement.scrollTop ||
+    document.body.scrollTop ||
+    0;
   if (start <= 0) return;
-  // Try native smooth scroll first.
-  try {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  } catch (_) { /* old browsers */ }
-  // Manual rAF fallback in case the browser ignored 'smooth' or to guarantee
-  // we actually reach 0 (some embedded webviews stop midway).
+  // Cancel any previous animation so we don't get two rAF loops fighting.
+  if (scrollAnim) cancelAnimationFrame(scrollAnim);
+  // We intentionally do NOT call window.scrollTo({behavior:'smooth'}) here —
+  // in Safari desktop the native smooth scroll fights with our rAF writes
+  // and the page ends up stuck. A single rAF loop works the same everywhere.
   const duration = 450;
   const t0 = performance.now();
   const ease = (t) => 1 - Math.pow(1 - t, 3);
   function step(now) {
     const k = Math.min(1, (now - t0) / duration);
-    const y = start * (1 - ease(k));
-    window.scrollTo(0, y);
-    if (k < 1) requestAnimationFrame(step);
+    const y = Math.round(start * (1 - ease(k)));
+    // Safari may scroll either documentElement or body depending on quirks
+    // mode / styles, so write to both to be safe.
+    document.documentElement.scrollTop = y;
+    document.body.scrollTop = y;
+    if (k < 1) {
+      scrollAnim = requestAnimationFrame(step);
+    } else {
+      scrollAnim = 0;
+    }
   }
-  requestAnimationFrame(step);
+  scrollAnim = requestAnimationFrame(step);
 }
 
 main().catch((e) => {
